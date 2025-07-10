@@ -3,24 +3,30 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 st.set_page_config(page_title="Órdenes de Compra", layout="wide")
-st.title("📦 Tablero de Órdenes de Compra")
+st.title("📦 Tablero de Órdenes desde Google Sheets")
 
-# 1. Cargar archivo Excel
+# 🧠 ID de tu hoja y nombre de la pestaña
+GSHEET_ID = '1UZBNDjvAEcK6DhSvU2a83D5RKrrNCHXU'  # <-- cambiá esto por tu ID real
+HOJA = 'vencimientos'
+
+# 🔗 URL directa para leer como CSV
+url = f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/gviz/tq?tqx=out:csv&sheet={HOJA}"
+
 @st.cache_data
-def cargar_datos(archivo):
-    df = pd.read_excel(archivo)
-    df['Fecha de vencimiento'] = pd.to_datetime(df['Fecha de vencimiento'])
+def cargar_datos_desde_gsheet(url):
+    df = pd.read_csv(url)
+    df['Fecha de vencimiento'] = pd.to_datetime(df['Fecha de vencimiento'], errors='coerce')
     return df
 
-archivo = st.file_uploader("📤 Subí archivo Excel con órdenes", type=["xlsx"])
+try:
+    df = cargar_datos_desde_gsheet(url)
 
-if archivo:
-    df = cargar_datos(archivo)
-
-    # 2. Clasificar estado según vencimiento
+    # Clasificar estado
     hoy = pd.to_datetime(datetime.today().date())
 
     def clasificar_estado(fecha_venc):
+        if pd.isna(fecha_venc):
+            return 'Sin fecha'
         if fecha_venc < hoy:
             return 'Vencida'
         elif fecha_venc <= hoy + timedelta(days=3):
@@ -30,20 +36,15 @@ if archivo:
 
     df['Estado'] = df['Fecha de vencimiento'].apply(clasificar_estado)
 
-    # 3. Calcular cantidad por estado
+    # Contar
     cantidad_vigente = df[df['Estado'] == 'Vigente'].shape[0]
     cantidad_por_vencer = df[df['Estado'] == 'Por vencer'].shape[0]
     cantidad_vencida = df[df['Estado'] == 'Vencida'].shape[0]
 
-    # 4. Mostrar tarjetas coloridas
+    # Estilo tarjetas
     st.markdown("""
         <style>
-        .card-container {
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
+        .card-container { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 2rem; }
         .card {
             flex: 1;
             padding: 1.5rem;
@@ -68,20 +69,13 @@ if archivo:
     </div>
     """, unsafe_allow_html=True)
 
-    # 5. Filtro por estado
-    estado_seleccionado = st.selectbox(
-        "🔍 Filtrar por estado de órdenes",
-        ["Todos", "Vigente", "Por vencer", "Vencida"]
-    )
+    # Filtro
+    estado_seleccionado = st.selectbox("🔍 Filtrar por estado", ["Todos", "Vigente", "Por vencer", "Vencida"])
+    df_filtrado = df if estado_seleccionado == "Todos" else df[df['Estado'] == estado_seleccionado]
 
-    if estado_seleccionado != "Todos":
-        df_filtrado = df[df['Estado'] == estado_seleccionado]
-    else:
-        df_filtrado = df
-
-    # 6. Mostrar tabla
+    # Tabla
     st.subheader("📋 Detalle de órdenes")
     st.dataframe(df_filtrado.sort_values(by='Fecha de vencimiento'), use_container_width=True)
 
-else:
-    st.info("📄 Por favor, subí un archivo Excel con al menos una columna llamada 'Fecha de vencimiento'.")
+except Exception as e:
+    st.error(f"Error al cargar datos desde Google Sheets: {e}")
