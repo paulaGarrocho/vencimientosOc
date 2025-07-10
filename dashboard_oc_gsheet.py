@@ -2,14 +2,12 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 
-st.set_page_config(page_title="Órdenes de Compra", layout="wide")
-st.title("📦 Tablero de Órdenes desde Google Sheets")
+st.set_page_config(page_title="Órdenes desde Google Sheets", layout="wide")
+st.title("📦 Tablero de Órdenes de Compra")
 
-# 🧠 ID de tu hoja y nombre de la pestaña
-GSHEET_ID = '1UZBNDjvAEcK6DhSvU2a83D5RKrrNCHXU'  # <-- cambiá esto por tu ID real
+# 🔗 Conexión al Google Sheet
+GSHEET_ID = '1UZBNDjvAEcK6DhSvU2a83D5RKrrNCHXU'
 HOJA = 'vencimientos'
-
-# 🔗 URL directa para leer como CSV
 url = f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/gviz/tq?tqx=out:csv&sheet={HOJA}"
 
 @st.cache_data
@@ -36,12 +34,12 @@ try:
 
     df['Estado'] = df['Fecha de vencimiento'].apply(clasificar_estado)
 
-    # Contar
+    # Contar por estado
     cantidad_vigente = df[df['Estado'] == 'Vigente'].shape[0]
     cantidad_por_vencer = df[df['Estado'] == 'Por vencer'].shape[0]
     cantidad_vencida = df[df['Estado'] == 'Vencida'].shape[0]
 
-    # Estilo tarjetas
+    # Estilo visual
     st.markdown("""
         <style>
         .card-container { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 2rem; }
@@ -69,7 +67,7 @@ try:
     </div>
     """, unsafe_allow_html=True)
 
-    # Filtro
+    # Filtro por estado
     estado_seleccionado = st.selectbox("🔍 Filtrar por estado", ["Todos", "Vigente", "Por vencer", "Vencida"])
     df_filtrado = df if estado_seleccionado == "Todos" else df[df['Estado'] == estado_seleccionado]
 
@@ -78,4 +76,4 @@ try:
     st.dataframe(df_filtrado.sort_values(by='Fecha de vencimiento'), use_container_width=True)
 
 except Exception as e:
-    st.error(f"Error al cargar datos desde Google Sheets: {e}")
+    st.error(f"❌ Error al cargar datos desde Google Sheets: {e}")
